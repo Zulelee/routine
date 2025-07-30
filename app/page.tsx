@@ -7,6 +7,7 @@ import { TaskForm } from "@/components/task-form";
 import { HealthTracker } from "@/components/health-tracker";
 import { JournalEntry } from "@/components/journal-entry";
 import { EndDayModal } from "@/components/end-day-modal";
+import { PomodoroTimer } from "@/components/pomodoro-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -317,6 +318,13 @@ export default function TodayPage() {
     });
   };
 
+  const handlePomodoroComplete = () => {
+    toast({
+      title: "Pomodoro session completed!",
+      description: "Great focus! Time for a break.",
+    });
+  };
+
   const completedTasks = tasks.filter((task) => task.status === "done").length;
   const totalTasks = tasks.length;
   const completionRate =
@@ -501,6 +509,8 @@ export default function TodayPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            <PomodoroTimer onSessionComplete={handlePomodoroComplete} />
+
             <HealthTracker
               waterGlasses={dailyLog.water_glasses}
               exercised={dailyLog.exercised}
