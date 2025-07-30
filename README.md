@@ -1,6 +1,6 @@
-# Daily Task Creator
+# Routine
 
-A comprehensive productivity and wellness web application built with Next.js, designed to help you manage daily tasks, track health habits, maintain a daily journal, and review your weekly progress.
+A productivity and wellness web application built with Next.js, designed to help you manage daily tasks, track health habits, maintain a daily journal, and review your weekly progress.
 
 ## ✨ Features
 
