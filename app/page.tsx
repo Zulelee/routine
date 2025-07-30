@@ -239,6 +239,62 @@ export default function TodayPage() {
     }
   };
 
+  const updateTaskTitle = async (taskId: string, title: string) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks(
+          tasks.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+        toast({
+          title: "Task updated",
+          description: "Task title has been updated successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating task title:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update task title.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateTaskDescription = async (taskId: string, description: string) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ description }),
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks(
+          tasks.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+        toast({
+          title: "Task updated",
+          description: "Task description has been updated successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating task description:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update task description.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const toggleTaskPin = async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -476,6 +532,8 @@ export default function TodayPage() {
                             onPinToggle={toggleTaskPin}
                             onEdit={handleEditTask}
                             onDelete={deleteTask}
+                            onTitleChange={updateTaskTitle}
+                            onDescriptionChange={updateTaskDescription}
                           />
                         ))}
                     </div>
@@ -498,6 +556,8 @@ export default function TodayPage() {
                             onPinToggle={toggleTaskPin}
                             onEdit={handleEditTask}
                             onDelete={deleteTask}
+                            onTitleChange={updateTaskTitle}
+                            onDescriptionChange={updateTaskDescription}
                           />
                         ))}
                     </div>
