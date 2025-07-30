@@ -2,6 +2,33 @@
 
 A productivity and wellness web application built with Next.js, designed to help you manage daily tasks, track health habits, maintain a daily journal, and review your weekly progress.
 
+## 🎯 Why I Built Routine
+
+I built Routine because I struggle with ADHD and find it incredibly difficult to stay focused and productive. Like many others, I've tried countless productivity and to-do apps, only to abandon them after 2-3 days because they never quite had everything I needed.
+
+### The Problem
+
+- **Procrastination**: I constantly stress about my tasks but only complete them when deadlines are looming
+- **Scattered focus**: Traditional apps don't address the specific challenges of ADHD
+- **Abandonment cycle**: I'd start using an app, realize it's missing something crucial, and give up
+
+### The Solution
+
+I decided to build my own productivity tool for two key reasons:
+
+1. **Ownership & Customization**: Since I built it, I can enhance it whenever I feel something is missing. Instead of abandoning the tool, I can add the features I need.
+
+2. **Community Impact**: I believe there are many others like me who struggle with focus and productivity. This app is open to the community - anyone can contribute features they think are missing.
+
+### What Makes Routine Different
+
+- **Built by someone who understands the struggle**: Every feature is designed with ADHD and focus challenges in mind
+- **Comprehensive approach**: Combines task management, health tracking, journaling, and reflection
+- **Flexible and extensible**: Easy to add new features as needs evolve
+- **Community-driven**: Open to contributions from others who face similar challenges
+
+Routine is more than just another productivity app - it's a tool built by someone who lives with the daily challenges of staying focused and organized.
+
 ## ✨ Features
 
 ### 🎯 Daily Task Management
