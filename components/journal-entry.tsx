@@ -12,6 +12,7 @@ interface JournalEntryProps {
   mood: string;
   onJournalChange: (entry: string) => void;
   onMoodChange: (mood: string) => void;
+  onSave?: () => void;
 }
 
 const moodOptions = [
@@ -25,8 +26,11 @@ export function JournalEntry({
   mood,
   onJournalChange,
   onMoodChange,
+  onSave,
 }: JournalEntryProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [localJournalEntry, setLocalJournalEntry] = useState(journalEntry);
+  const [localMood, setLocalMood] = useState(mood);
 
   return (
     <Card>
@@ -59,7 +63,7 @@ export function JournalEntry({
                   key={option.value}
                   variant={mood === option.value ? "default" : "outline"}
                   size="sm"
-                  onClick={() => onMoodChange(option.value)}
+                  onClick={() => setLocalMood(option.value)}
                   className="flex items-center gap-2"
                 >
                   <span className="text-lg">{option.value}</span>
@@ -78,8 +82,8 @@ export function JournalEntry({
           <Textarea
             id="journal"
             placeholder="Write about your day, thoughts, or anything on your mind..."
-            value={journalEntry}
-            onChange={(e) => onJournalChange(e.target.value)}
+            value={localJournalEntry}
+            onChange={(e) => setLocalJournalEntry(e.target.value)}
             className={`transition-all duration-200 ${
               isExpanded ? "min-h-[200px]" : "min-h-[100px]"
             }`}
@@ -98,6 +102,20 @@ export function JournalEntry({
             </div>
           </div>
         )}
+
+        {/* Save Button */}
+        <div className="flex justify-end pt-2">
+          <Button
+            onClick={() => {
+              onJournalChange(localJournalEntry);
+              onMoodChange(localMood);
+              onSave?.();
+            }}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            Done
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

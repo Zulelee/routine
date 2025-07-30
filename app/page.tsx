@@ -6,6 +6,7 @@ import { TaskCard } from "@/components/task-card";
 import { TaskForm } from "@/components/task-form";
 import { HealthTracker } from "@/components/health-tracker";
 import { JournalEntry } from "@/components/journal-entry";
+import { EndDayModal } from "@/components/end-day-modal";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ export default function TodayPage() {
   const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEndDayModalOpen, setIsEndDayModalOpen] = useState(false);
   const { toast } = useToast();
 
   const today = new Date();
@@ -53,6 +55,22 @@ export default function TodayPage() {
   useEffect(() => {
     loadTodayData();
   }, []);
+
+  // Check if it's time to show end day modal (after 8 PM)
+  useEffect(() => {
+    const now = new Date();
+    const hour = now.getHours();
+
+    // Show end day modal after 8 PM if not already shown today
+    if (hour >= 20 && !dailyLog.day_complete) {
+      const shouldShowEndDay = window.confirm(
+        "It's getting late! Would you like to end your day and reflect on your progress?"
+      );
+      if (shouldShowEndDay) {
+        setIsEndDayModalOpen(true);
+      }
+    }
+  }, [dailyLog.day_complete]);
 
   const loadTodayData = async () => {
     try {
@@ -283,6 +301,22 @@ export default function TodayPage() {
     setEditingTask(null);
   };
 
+  const handleEndDay = (data: {
+    what_went_well: string;
+    what_to_improve: string;
+    notes_for_tomorrow: string;
+  }) => {
+    // Mark the day as complete
+    updateDailyLog({ day_complete: true });
+
+    // Here you could save the end-of-day reflection to the database
+    console.log("End of day reflection:", data);
+    toast({
+      title: "Day ended successfully",
+      description: "Your reflection has been saved. Great work today!",
+    });
+  };
+
   const completedTasks = tasks.filter((task) => task.status === "done").length;
   const totalTasks = tasks.length;
   const completionRate =
@@ -319,10 +353,19 @@ export default function TodayPage() {
                 {format(today, "EEEE, MMMM d, yyyy")}
               </p>
             </div>
-            <Button onClick={() => setIsTaskFormOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Task
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsEndDayModalOpen(true)}
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                End Day
+              </Button>
+              <Button onClick={() => setIsTaskFormOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Task
+              </Button>
+            </div>
           </div>
 
           {/* Progress Summary */}
@@ -476,6 +519,12 @@ export default function TodayPage() {
                 updateDailyLog({ journal_entry: entry })
               }
               onMoodChange={(mood) => updateDailyLog({ mood })}
+              onSave={() => {
+                toast({
+                  title: "Journal saved",
+                  description: "Your reflection has been saved successfully.",
+                });
+              }}
             />
           </div>
         </div>
@@ -488,6 +537,19 @@ export default function TodayPage() {
         onSubmit={handleTaskSubmit}
         initialData={editingTask || undefined}
         mode={editingTask ? "edit" : "create"}
+      />
+
+      {/* End Day Modal */}
+      <EndDayModal
+        isOpen={isEndDayModalOpen}
+        onClose={() => setIsEndDayModalOpen(false)}
+        completedTasks={completedTasks}
+        totalTasks={totalTasks}
+        waterGlasses={dailyLog.water_glasses}
+        exercised={dailyLog.exercised}
+        journalEntry={dailyLog.journal_entry}
+        mood={dailyLog.mood}
+        onSubmit={handleEndDay}
       />
     </div>
   );
