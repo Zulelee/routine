@@ -1,31 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, getOrCreateUser } from "@/lib/db";
-import { addDays, startOfDay } from "date-fns";
+import { startOfDay } from "date-fns";
 
-// POST /api/tasks/carry-forward - Carry forward incomplete tasks from yesterday
+// POST /api/tasks/carry-forward - Carry forward incomplete tasks from one date to another
 export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const today = searchParams.get("today");
+    const body = await request.json();
+    const { fromDate, toDate } = body;
     const user = await getOrCreateUser();
 
-    if (!today) {
+    if (!fromDate || !toDate) {
       return NextResponse.json(
-        { error: "Today parameter is required" },
+        { error: "fromDate and toDate parameters are required" },
         { status: 400 }
       );
     }
 
-    const todayDate = new Date(today);
-    const yesterdayDate = addDays(todayDate, -1);
+    const fromDateObj = new Date(fromDate);
+    const toDateObj = new Date(toDate);
 
-    // Get incomplete tasks from yesterday
+    // Get incomplete tasks from the fromDate
     const incompleteTasks = await prisma.task.findMany({
       where: {
         user_id: user.id,
         date: {
-          gte: startOfDay(yesterdayDate),
-          lt: startOfDay(addDays(yesterdayDate, 1)),
+          gte: startOfDay(fromDateObj),
+          lt: startOfDay(new Date(fromDateObj.getTime() + 24 * 60 * 60 * 1000)),
         },
         status: {
           in: ["todo", "in_progress"],
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create new tasks for today with the same data
+    // Create new tasks for toDate with the same data
     const carriedForwardTasks = await Promise.all(
       incompleteTasks.map((task: any) =>
         prisma.task.create({
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
             user_id: user.id,
             title: task.title,
             description: task.description,
-            date: todayDate,
+            date: toDateObj,
             status: "todo", // Reset status to todo
             pinned: task.pinned,
             priority: task.priority,

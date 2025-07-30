@@ -11,10 +11,25 @@ import { PomodoroTimer } from "@/components/pomodoro-timer";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Target, CheckCircle, Clock, Pin } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Plus,
+  Target,
+  CheckCircle,
+  Clock,
+  Pin,
+  Calendar as CalendarIcon,
+  Play,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { format, isToday, isYesterday } from "date-fns";
+import { format, isToday, isYesterday, addDays, subDays } from "date-fns";
 import { TaskStatus, Priority } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface Task {
   id: string;
@@ -47,23 +62,25 @@ export default function TodayPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEndDayModalOpen, setIsEndDayModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const { toast } = useToast();
 
-  const today = new Date();
-  const todayString = format(today, "yyyy-MM-dd");
+  const selectedDateString = format(selectedDate, "yyyy-MM-dd");
 
-  // Load tasks and daily log on mount
+  // Load tasks and daily log when selected date changes
   useEffect(() => {
-    loadTodayData();
-  }, []);
+    loadDayData();
+  }, [selectedDate]);
 
-  // Check if it's time to show end day modal (after 8 PM)
+  // Check if it's time to show end day modal (after 8 PM) only for today
   useEffect(() => {
     const now = new Date();
     const hour = now.getHours();
+    const isSelectedDateToday = isToday(selectedDate);
 
-    // Show end day modal after 8 PM if not already shown today
-    if (hour >= 20 && !dailyLog.day_complete) {
+    // Show end day modal after 8 PM if not already shown today and we're viewing today
+    if (hour >= 20 && !dailyLog.day_complete && isSelectedDateToday) {
       const shouldShowEndDay = window.confirm(
         "It's getting late! Would you like to end your day and reflect on your progress?"
       );
@@ -71,34 +88,93 @@ export default function TodayPage() {
         setIsEndDayModalOpen(true);
       }
     }
-  }, [dailyLog.day_complete]);
+  }, [dailyLog.day_complete, selectedDate]);
 
-  const loadTodayData = async () => {
+  const LoadData = async () => {
+    setIsLoading(true);
     try {
-      // Load today's tasks
-      const tasksResponse = await fetch(`/api/tasks?date=${todayString}`);
+      const taskResponse = await fetch(`/api/tasks?date=${selectedDateString}`);
+      if (taskResponse.ok) {
+        const tasksData = await taskResponse.json();
+        setTasks(tasksData);
+      }
+
+      const logResponse = await fetch(
+        `/api/daily-logs?date=${selectedDateString}`
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadDayData = async () => {
+    setIsLoading(true);
+    try {
+      // Load tasks for selected date
+      const tasksResponse = await fetch(
+        `/api/tasks?date=${selectedDateString}`
+      );
       if (tasksResponse.ok) {
         const tasksData = await tasksResponse.json();
         setTasks(tasksData);
       }
 
-      // Load today's daily log
-      const logResponse = await fetch(`/api/daily-logs?date=${todayString}`);
+      // Load daily log for selected date
+      const logResponse = await fetch(
+        `/api/daily-logs?date=${selectedDateString}`
+      );
       if (logResponse.ok) {
         const logData = await logResponse.json();
         if (logData) {
           setDailyLog(logData);
+        } else {
+          // Reset daily log for new date
+          setDailyLog({
+            water_glasses: 0,
+            exercised: false,
+            sleep_hours: 0,
+          });
         }
       }
     } catch (error) {
-      console.error("Error loading today's data:", error);
+      console.error("Error loading day's data:", error);
       toast({
         title: "Error",
-        description: "Failed to load today's data.",
+        description: "Failed to load day's data.",
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const startNewDay = async () => {
+    try {
+      // Carry forward incomplete tasks from the previous day
+      const response = await fetch("/api/tasks/carry-forward", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromDate: format(subDays(selectedDate, 1), "yyyy-MM-dd"),
+          toDate: selectedDateString,
+        }),
+      });
+
+      if (response.ok) {
+        const carriedTasks = await response.json();
+        setTasks((prevTasks) => [...prevTasks, ...carriedTasks]);
+        toast({
+          title: "New day started",
+          description: "Incomplete tasks have been carried forward.",
+        });
+      }
+    } catch (error) {
+      console.error("Error starting new day:", error);
+      toast({
+        title: "Error",
+        description: "Failed to start new day.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -115,7 +191,7 @@ export default function TodayPage() {
           description: "Sample data has been created successfully.",
         });
         // Reload data after initialization
-        loadTodayData();
+        loadDayData();
       }
     } catch (error) {
       console.error("Error initializing database:", error);
@@ -139,7 +215,7 @@ export default function TodayPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...taskData,
-          date: todayString,
+          date: selectedDateString,
         }),
       });
 
@@ -323,7 +399,7 @@ export default function TodayPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          date: todayString,
+          date: selectedDateString,
           ...updates,
         }),
       });
@@ -381,10 +457,25 @@ export default function TodayPage() {
     });
   };
 
+  const goToPreviousDay = () => {
+    setSelectedDate(subDays(selectedDate, 1));
+  };
+
+  const goToNextDay = () => {
+    setSelectedDate(addDays(selectedDate, 1));
+  };
+
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
   const completedTasks = tasks.filter((task) => task.status === "done").length;
   const totalTasks = tasks.length;
   const completionRate =
     totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  const isSelectedDateToday = isToday(selectedDate);
+  const isSelectedDateYesterday = isYesterday(selectedDate);
 
   if (isLoading) {
     return (
@@ -395,7 +486,7 @@ export default function TodayPage() {
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
               <p className="text-muted-foreground">
-                Loading today&apos;s data...
+                Loading day&apos;s data...
               </p>
             </div>
           </div>
@@ -413,9 +504,61 @@ export default function TodayPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold">Today</h1>
-              <p className="text-muted-foreground">
-                {format(today, "EEEE, MMMM d, yyyy")}
-              </p>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={goToPreviousDay}>
+                    ←
+                  </Button>
+                  <Popover
+                    open={isDatePickerOpen}
+                    onOpenChange={setIsDatePickerOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                        {isSelectedDateToday && (
+                          <Badge variant="secondary" className="ml-2">
+                            Today
+                          </Badge>
+                        )}
+                        {isSelectedDateYesterday && (
+                          <Badge variant="secondary" className="ml-2">
+                            Yesterday
+                          </Badge>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          if (date) {
+                            setSelectedDate(date);
+                            setIsDatePickerOpen(false);
+                          }
+                        }}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Button variant="outline" size="sm" onClick={goToNextDay}>
+                    →
+                  </Button>
+                </div>
+                {!isSelectedDateToday && (
+                  <Button variant="outline" size="sm" onClick={goToToday}>
+                    Today
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <Button
@@ -431,6 +574,27 @@ export default function TodayPage() {
               </Button>
             </div>
           </div>
+
+          {/* Start New Day Button */}
+          {!isSelectedDateToday && tasks.length === 0 && (
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">No tasks for this day</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Start working on this day by carrying forward incomplete
+                      tasks from the previous day.
+                    </p>
+                  </div>
+                  <Button onClick={startNewDay} className="gap-2">
+                    <Play className="h-4 w-4" />
+                    Start New Day
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Progress Summary */}
           <Card className="mb-6">
@@ -500,13 +664,21 @@ export default function TodayPage() {
                   <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
                   <p className="text-muted-foreground mb-4">
-                    Start your day by adding some tasks to accomplish.
+                    {isSelectedDateToday
+                      ? "Start your day by adding some tasks to accomplish."
+                      : "No tasks for this day. Add some tasks or start a new day."}
                   </p>
                   <div className="flex gap-2 justify-center">
                     <Button onClick={() => setIsTaskFormOpen(true)}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add Your First Task
                     </Button>
+                    {!isSelectedDateToday && (
+                      <Button variant="outline" onClick={startNewDay}>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start New Day
+                      </Button>
+                    )}
                     <Button variant="outline" onClick={initializeDatabase}>
                       Load Sample Data
                     </Button>
