@@ -1,113 +1,494 @@
-import Image from 'next/image'
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react";
+import { Navigation } from "@/components/navigation";
+import { TaskCard } from "@/components/task-card";
+import { TaskForm } from "@/components/task-form";
+import { HealthTracker } from "@/components/health-tracker";
+import { JournalEntry } from "@/components/journal-entry";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Calendar, Target, CheckCircle, Clock, Pin } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { format, isToday, isYesterday } from "date-fns";
+import { TaskStatus, Priority } from "@/lib/types";
+
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority?: Priority;
+  pinned: boolean;
+  created_at: string;
+}
+
+interface DailyLog {
+  id?: string;
+  journal_entry?: string;
+  mood?: string;
+  water_glasses: number;
+  exercised: boolean;
+  sleep_hours?: number;
+  day_complete?: boolean;
+}
+
+export default function TodayPage() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [dailyLog, setDailyLog] = useState<DailyLog>({
+    water_glasses: 0,
+    exercised: false,
+    sleep_hours: 0,
+  });
+  const [isTaskFormOpen, setIsTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
+
+  const today = new Date();
+  const todayString = format(today, "yyyy-MM-dd");
+
+  // Load tasks and daily log on mount
+  useEffect(() => {
+    loadTodayData();
+  }, []);
+
+  const loadTodayData = async () => {
+    try {
+      // Load today's tasks
+      const tasksResponse = await fetch(`/api/tasks?date=${todayString}`);
+      if (tasksResponse.ok) {
+        const tasksData = await tasksResponse.json();
+        setTasks(tasksData);
+      }
+
+      // Load today's daily log
+      const logResponse = await fetch(`/api/daily-logs?date=${todayString}`);
+      if (logResponse.ok) {
+        const logData = await logResponse.json();
+        if (logData) {
+          setDailyLog(logData);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading today's data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load today's data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const initializeDatabase = async () => {
+    try {
+      const response = await fetch("/api/init", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "Database initialized",
+          description: "Sample data has been created successfully.",
+        });
+        // Reload data after initialization
+        loadTodayData();
+      }
+    } catch (error) {
+      console.error("Error initializing database:", error);
+      toast({
+        title: "Error",
+        description: "Failed to initialize database.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const createTask = async (taskData: {
+    title: string;
+    description?: string;
+    priority?: Priority;
+    status: TaskStatus;
+  }) => {
+    try {
+      const response = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...taskData,
+          date: todayString,
+        }),
+      });
+
+      if (response.ok) {
+        const newTask = await response.json();
+        setTasks([...tasks, newTask]);
+        toast({
+          title: "Task created",
+          description: "Your task has been added successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create task.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateTask = async (taskData: {
+    title: string;
+    description?: string;
+    priority?: Priority;
+    status: TaskStatus;
+  }) => {
+    if (!editingTask) return;
+
+    try {
+      const response = await fetch(`/api/tasks/${editingTask.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(taskData),
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks(
+          tasks.map((task) => (task.id === editingTask.id ? updatedTask : task))
+        );
+        setEditingTask(null);
+        toast({
+          title: "Task updated",
+          description: "Your task has been updated successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update task.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setTasks(tasks.filter((task) => task.id !== taskId));
+        toast({
+          title: "Task deleted",
+          description: "Your task has been deleted successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete task.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateTaskStatus = async (taskId: string, status: TaskStatus) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks(
+          tasks.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+      }
+    } catch (error) {
+      console.error("Error updating task status:", error);
+    }
+  };
+
+  const toggleTaskPin = async (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned: !task.pinned }),
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks(
+          tasks.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+      }
+    } catch (error) {
+      console.error("Error toggling task pin:", error);
+    }
+  };
+
+  const updateDailyLog = async (updates: Partial<DailyLog>) => {
+    try {
+      const response = await fetch("/api/daily-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: todayString,
+          ...updates,
+        }),
+      });
+
+      if (response.ok) {
+        const updatedLog = await response.json();
+        setDailyLog(updatedLog);
+      }
+    } catch (error) {
+      console.error("Error updating daily log:", error);
+    }
+  };
+
+  const handleTaskSubmit = (data: any) => {
+    if (editingTask) {
+      updateTask(data);
+    } else {
+      createTask(data);
+    }
+  };
+
+  const handleEditTask = (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) {
+      setEditingTask(task);
+      setIsTaskFormOpen(true);
+    }
+  };
+
+  const handleCloseTaskForm = () => {
+    setIsTaskFormOpen(false);
+    setEditingTask(null);
+  };
+
+  const completedTasks = tasks.filter((task) => task.status === "done").length;
+  const totalTasks = tasks.length;
+  const completionRate =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">
+                Loading today&apos;s data...
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
-          Get started by editing&nbsp;
-          <code className="font-mono font-bold">app/page.tsx</code>
-        </p>
-        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
-          <a
-            className="pointer-events-none flex place-items-center gap-2 p-8 lg:pointer-events-auto lg:p-0"
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{' '}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className="dark:invert"
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <main className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold">Today</h1>
+              <p className="text-muted-foreground">
+                {format(today, "EEEE, MMMM d, yyyy")}
+              </p>
+            </div>
+            <Button onClick={() => setIsTaskFormOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Task
+            </Button>
+          </div>
+
+          {/* Progress Summary */}
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-primary">
+                    {totalTasks}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Total Tasks
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">
+                    {completedTasks}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Completed</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">
+                    {dailyLog.water_glasses}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Water Glasses
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">
+                    {dailyLog.exercised ? "✓" : "✗"}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Exercised</div>
+                </div>
+              </div>
+              {totalTasks > 0 && (
+                <div className="mt-4">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Progress</span>
+                    <span>{completionRate}%</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-primary h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${completionRate}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
-        <Image
-          className="relative dark:drop-shadow-[0_0_0.3rem_#ffffff70] dark:invert"
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Tasks Section */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">Tasks</h2>
+              <Badge variant="secondary">
+                {completedTasks}/{totalTasks} completed
+              </Badge>
+            </div>
 
-      <div className="mb-32 grid text-center lg:max-w-5xl lg:w-full lg:mb-0 lg:grid-cols-4 lg:text-left">
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Docs{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Find in-depth information about Next.js features and API.
-          </p>
-        </a>
+            {tasks.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Start your day by adding some tasks to accomplish.
+                  </p>
+                  <div className="flex gap-2 justify-center">
+                    <Button onClick={() => setIsTaskFormOpen(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Your First Task
+                    </Button>
+                    <Button variant="outline" onClick={initializeDatabase}>
+                      Load Sample Data
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {tasks.some((task) => task.pinned) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                      <Pin className="h-4 w-4" />
+                      Pinned Tasks
+                    </h3>
+                    <div className="space-y-3">
+                      {tasks
+                        .filter((task) => task.pinned)
+                        .map((task) => (
+                          <TaskCard
+                            key={task.id}
+                            {...task}
+                            onStatusChange={updateTaskStatus}
+                            onPinToggle={toggleTaskPin}
+                            onEdit={handleEditTask}
+                            onDelete={deleteTask}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )}
 
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Learn{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Learn about Next.js in an interactive course with&nbsp;quizzes!
-          </p>
-        </a>
+                {tasks.some((task) => !task.pinned) && (
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                      Other Tasks
+                    </h3>
+                    <div className="space-y-3">
+                      {tasks
+                        .filter((task) => !task.pinned)
+                        .map((task) => (
+                          <TaskCard
+                            key={task.id}
+                            {...task}
+                            onStatusChange={updateTaskStatus}
+                            onPinToggle={toggleTaskPin}
+                            onEdit={handleEditTask}
+                            onDelete={deleteTask}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Templates{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Explore the Next.js 13 playground.
-          </p>
-        </a>
+          {/* Sidebar */}
+          <div className="space-y-6">
+            <HealthTracker
+              waterGlasses={dailyLog.water_glasses}
+              exercised={dailyLog.exercised}
+              sleepHours={dailyLog.sleep_hours || 0}
+              onWaterChange={(glasses) =>
+                updateDailyLog({ water_glasses: glasses })
+              }
+              onExerciseChange={(exercised) => updateDailyLog({ exercised })}
+              onSleepChange={(hours) => updateDailyLog({ sleep_hours: hours })}
+            />
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className="group rounded-lg border border-transparent px-5 py-4 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2 className={`mb-3 text-2xl font-semibold`}>
-            Deploy{' '}
-            <span className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">
-              -&gt;
-            </span>
-          </h2>
-          <p className={`m-0 max-w-[30ch] text-sm opacity-50`}>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
-  )
+            <JournalEntry
+              journalEntry={dailyLog.journal_entry || ""}
+              mood={dailyLog.mood || ""}
+              onJournalChange={(entry) =>
+                updateDailyLog({ journal_entry: entry })
+              }
+              onMoodChange={(mood) => updateDailyLog({ mood })}
+            />
+          </div>
+        </div>
+      </main>
+
+      {/* Task Form Modal */}
+      <TaskForm
+        isOpen={isTaskFormOpen}
+        onClose={handleCloseTaskForm}
+        onSubmit={handleTaskSubmit}
+        initialData={editingTask || undefined}
+        mode={editingTask ? "edit" : "create"}
+      />
+    </div>
+  );
 }
