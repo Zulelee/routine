@@ -1,6 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { Navigation } from "@/components/navigation";
 import { TaskCard } from "@/components/task-card";
 import { TaskForm } from "@/components/task-form";
@@ -35,6 +50,7 @@ interface Task {
   id: string;
   title: string;
   description?: string;
+  notes?: string;
   status: TaskStatus;
   priority?: Priority;
   pinned: boolean;
@@ -65,6 +81,18 @@ export default function TodayPage() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const { toast } = useToast();
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const selectedDateString = format(selectedDate, "yyyy-MM-dd");
 
@@ -371,6 +399,34 @@ export default function TodayPage() {
     }
   };
 
+  const updateTaskNotes = async (taskId: string, notes: string) => {
+    try {
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes }),
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        setTasks(
+          tasks.map((task) => (task.id === taskId ? updatedTask : task))
+        );
+        toast({
+          title: "Task updated",
+          description: "Task notes have been updated successfully.",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating task notes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update task notes.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const toggleTaskPin = async (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
@@ -434,20 +490,64 @@ export default function TodayPage() {
     setEditingTask(null);
   };
 
-  const handleEndDay = (data: {
+  const handleEndDay = async (data: {
     what_went_well: string;
     what_to_improve: string;
     notes_for_tomorrow: string;
   }) => {
-    // Mark the day as complete
-    updateDailyLog({ day_complete: true });
+    try {
+      // Mark the day as complete
+      await updateDailyLog({ day_complete: true });
 
-    // Here you could save the end-of-day reflection to the database
-    console.log("End of day reflection:", data);
-    toast({
-      title: "Day ended successfully",
-      description: "Your reflection has been saved. Great work today!",
-    });
+      // Get incomplete tasks for the current day
+      const incompleteTasks = tasks.filter(task => 
+        task.status === "todo" || task.status === "in_progress"
+      );
+
+      if (incompleteTasks.length > 0) {
+        // Carry forward incomplete tasks to the next day
+        const nextDay = addDays(selectedDate, 1);
+        const nextDayString = format(nextDay, "yyyy-MM-dd");
+
+        const response = await fetch("/api/tasks/carry-forward", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fromDate: selectedDateString,
+            toDate: nextDayString,
+          }),
+        });
+
+        if (response.ok) {
+          const carriedTasks = await response.json();
+          toast({
+            title: "Day ended successfully",
+            description: `${incompleteTasks.length} incomplete tasks have been carried forward to tomorrow. Great work today!`,
+          });
+        } else {
+          toast({
+            title: "Day ended",
+            description: "Your reflection has been saved, but there was an issue carrying forward tasks.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Day ended successfully",
+          description: "All tasks completed! Great work today!",
+        });
+      }
+
+      // Here you could save the end-of-day reflection to the database
+      console.log("End of day reflection:", data);
+    } catch (error) {
+      console.error("Error ending day:", error);
+      toast({
+        title: "Error",
+        description: "Failed to end day properly.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePomodoroComplete = () => {
@@ -469,6 +569,19 @@ export default function TodayPage() {
     setSelectedDate(new Date());
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      setTasks((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over?.id);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
   const completedTasks = tasks.filter((task) => task.status === "done").length;
   const totalTasks = tasks.length;
   const completionRate =
@@ -481,7 +594,7 @@ export default function TodayPage() {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="container mx-auto px-4 py-8">
+        <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
@@ -498,13 +611,13 @@ export default function TodayPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold">Today</h1>
-              <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-0">Today</h1>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={goToPreviousDay}>
                     ←
@@ -517,12 +630,17 @@ export default function TodayPage() {
                       <Button
                         variant="outline"
                         className={cn(
-                          "justify-start text-left font-normal",
+                          "justify-start text-left font-normal text-sm sm:text-base",
                           !selectedDate && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                        <span className="hidden sm:inline">
+                          {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                        </span>
+                        <span className="sm:hidden">
+                          {format(selectedDate, "MMM d, yyyy")}
+                        </span>
                         {isSelectedDateToday && (
                           <Badge variant="secondary" className="ml-2">
                             Today
@@ -563,14 +681,22 @@ export default function TodayPage() {
             <div className="flex gap-2">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => setIsEndDayModalOpen(true)}
+                className="flex-1 sm:flex-none"
               >
-                <Clock className="h-4 w-4 mr-2" />
-                End Day
+                <Clock className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">End Day</span>
+                <span className="sm:hidden">End</span>
               </Button>
-              <Button onClick={() => setIsTaskFormOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Task
+              <Button 
+                onClick={() => setIsTaskFormOpen(true)}
+                size="sm"
+                className="flex-1 sm:flex-none"
+              >
+                <Plus className="h-4 w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Add Task</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </div>
           </div>
@@ -598,40 +724,40 @@ export default function TodayPage() {
 
           {/* Progress Summary */}
           <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <CardContent className="p-4 sm:p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
+                  <div className="text-xl sm:text-2xl font-bold text-primary">
                     {totalTasks}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-xs sm:text-sm text-muted-foreground">
                     Total Tasks
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-xl sm:text-2xl font-bold text-green-600">
                     {completedTasks}
                   </div>
-                  <div className="text-sm text-muted-foreground">Completed</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Completed</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-xl sm:text-2xl font-bold text-blue-600">
                     {dailyLog.water_glasses}
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-xs sm:text-sm text-muted-foreground">
                     Water Glasses
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">
+                  <div className="text-xl sm:text-2xl font-bold text-purple-600">
                     {dailyLog.exercised ? "✓" : "✗"}
                   </div>
-                  <div className="text-sm text-muted-foreground">Exercised</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">Exercised</div>
                 </div>
               </div>
               {totalTasks > 0 && (
                 <div className="mt-4">
-                  <div className="flex justify-between text-sm mb-1">
+                  <div className="flex justify-between text-xs sm:text-sm mb-1">
                     <span>Progress</span>
                     <span>{completionRate}%</span>
                   </div>
@@ -648,99 +774,117 @@ export default function TodayPage() {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Tasks Section */}
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Tasks</h2>
-              <Badge variant="secondary">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
+              <h2 className="text-lg sm:text-xl font-semibold">Tasks</h2>
+              <Badge variant="secondary" className="self-start sm:self-auto">
                 {completedTasks}/{totalTasks} completed
               </Badge>
             </div>
 
             {tasks.length === 0 ? (
               <Card>
-                <CardContent className="p-8 text-center">
-                  <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">No tasks yet</h3>
-                  <p className="text-muted-foreground mb-4">
+                <CardContent className="p-4 sm:p-8 text-center">
+                  <Target className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-base sm:text-lg font-medium mb-2">No tasks yet</h3>
+                  <p className="text-sm sm:text-base text-muted-foreground mb-4">
                     {isSelectedDateToday
                       ? "Start your day by adding some tasks to accomplish."
                       : "No tasks for this day. Add some tasks or start a new day."}
                   </p>
-                  <div className="flex gap-2 justify-center">
-                    <Button onClick={() => setIsTaskFormOpen(true)}>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                    <Button onClick={() => setIsTaskFormOpen(true)} size="sm" className="sm:text-base">
                       <Plus className="h-4 w-4 mr-2" />
                       Add Your First Task
                     </Button>
                     {!isSelectedDateToday && (
-                      <Button variant="outline" onClick={startNewDay}>
+                      <Button variant="outline" onClick={startNewDay} size="sm" className="sm:text-base">
                         <Play className="h-4 w-4 mr-2" />
                         Start New Day
                       </Button>
                     )}
-                    <Button variant="outline" onClick={initializeDatabase}>
+                    <Button variant="outline" onClick={initializeDatabase} size="sm" className="sm:text-base">
                       Load Sample Data
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-3">
-                {tasks.some((task) => task.pinned) && (
-                  <div className="mb-4">
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                      <Pin className="h-4 w-4" />
-                      Pinned Tasks
-                    </h3>
-                    <div className="space-y-3">
-                      {tasks
-                        .filter((task) => task.pinned)
-                        .map((task) => (
-                          <TaskCard
-                            key={task.id}
-                            {...task}
-                            onStatusChange={updateTaskStatus}
-                            onPinToggle={toggleTaskPin}
-                            onEdit={handleEditTask}
-                            onDelete={deleteTask}
-                            onTitleChange={updateTaskTitle}
-                            onDescriptionChange={updateTaskDescription}
-                          />
-                        ))}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <div className="space-y-3">
+                  {tasks.some((task) => task.pinned) && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                        <Pin className="h-4 w-4" />
+                        Pinned Tasks
+                      </h3>
+                      <SortableContext
+                        items={tasks.filter((task) => task.pinned).map((task) => task.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-3">
+                          {tasks
+                            .filter((task) => task.pinned)
+                            .map((task) => (
+                              <TaskCard
+                                key={task.id}
+                                {...task}
+                                onStatusChange={updateTaskStatus}
+                                onPinToggle={toggleTaskPin}
+                                onEdit={handleEditTask}
+                                onDelete={deleteTask}
+                                onTitleChange={updateTaskTitle}
+                                onDescriptionChange={updateTaskDescription}
+                                onNotesChange={updateTaskNotes}
+                              />
+                            ))}
+                        </div>
+                      </SortableContext>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {tasks.some((task) => !task.pinned) && (
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                      Other Tasks
-                    </h3>
-                    <div className="space-y-3">
-                      {tasks
-                        .filter((task) => !task.pinned)
-                        .map((task) => (
-                          <TaskCard
-                            key={task.id}
-                            {...task}
-                            onStatusChange={updateTaskStatus}
-                            onPinToggle={toggleTaskPin}
-                            onEdit={handleEditTask}
-                            onDelete={deleteTask}
-                            onTitleChange={updateTaskTitle}
-                            onDescriptionChange={updateTaskDescription}
-                          />
-                        ))}
+                  {tasks.some((task) => !task.pinned) && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                        Other Tasks
+                      </h3>
+                      <SortableContext
+                        items={tasks.filter((task) => !task.pinned).map((task) => task.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-3">
+                          {tasks
+                            .filter((task) => !task.pinned)
+                            .map((task) => (
+                              <TaskCard
+                                key={task.id}
+                                {...task}
+                                onStatusChange={updateTaskStatus}
+                                onPinToggle={toggleTaskPin}
+                                onEdit={handleEditTask}
+                                onDelete={deleteTask}
+                                onTitleChange={updateTaskTitle}
+                                onDescriptionChange={updateTaskDescription}
+                                onNotesChange={updateTaskNotes}
+                              />
+                            ))}
+                        </div>
+                      </SortableContext>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </DndContext>
             )}
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <PomodoroTimer onSessionComplete={handlePomodoroComplete} />
 
             <HealthTracker

@@ -1,6 +1,6 @@
 import { Task, DailyLog, WeeklyReview, User } from "@prisma/client";
 
-export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskStatus = "todo" | "in_progress" | "done" | "blocked";
 export type Priority = "low" | "medium" | "high";
 
 export type TaskWithUser = Task & {
@@ -18,6 +18,7 @@ export type WeeklyReviewWithUser = WeeklyReview & {
 export interface CreateTaskData {
   title: string;
   description?: string;
+  notes?: string;
   date: Date | string;
   status?: TaskStatus;
   pinned?: boolean;
@@ -27,6 +28,7 @@ export interface CreateTaskData {
 export interface UpdateTaskData {
   title?: string;
   description?: string;
+  notes?: string;
   status?: TaskStatus;
   pinned?: boolean;
   priority?: Priority;
