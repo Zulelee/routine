@@ -21,9 +21,7 @@ model User {
 
   tasks         Task[]
   dailyLogs     DailyLog[]
-  weeklyReviews WeeklyReview[]
   invoices      Invoice[]
-  payments      Payment[]
   clients       Client[]
 
   @@map("users")
@@ -65,22 +63,7 @@ model DailyLog {
   @@map("daily_logs")
 }
 
-model WeeklyReview {
-  id               String   @id @default(cuid())
-  user_id          String
-  week_start       DateTime
-  tasks_completed  Int      @default(0)
-  tasks_rolled_over Int     @default(0)
-  average_water    Float    @default(0)
-  exercise_days    Int      @default(0)
-  notes            String?
-  created_at       DateTime @default(now())
 
-  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, week_start])
-  @@map("weekly_reviews")
-}
 
 model Client {
   id          String   @id @default(cuid())
@@ -121,28 +104,12 @@ model Invoice {
 
   user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
   client Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
-  payments Payment[]
 
   @@unique([user_id, invoice_number])
   @@map("invoices")
 }
 
-model Payment {
-  id          String        @id @default(cuid())
-  user_id     String
-  invoice_id  String
-  amount      Float
-  payment_date DateTime
-  payment_method PaymentMethod
-  reference   String?
-  notes       String?
-  created_at  DateTime      @default(now())
 
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  invoice Invoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
-
-  @@map("payments")
-}
 
 enum TaskStatus {
   todo
@@ -165,12 +132,3 @@ enum InvoiceStatus {
   cancelled
 }
 
-enum PaymentMethod {
-  bank_transfer
-  credit_card
-  cash
-  check
-  paypal
-  stripe
-  other
-}

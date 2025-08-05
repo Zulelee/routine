@@ -113,25 +113,6 @@ async function main() {
 
   console.log("✅ Created sample daily logs");
 
-  // Create a sample weekly review
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
-
-  await prisma.weeklyReview.create({
-    data: {
-      user_id: user.id,
-      week_start: weekStart,
-      tasks_completed: 8,
-      tasks_rolled_over: 2,
-      average_water: 5.0,
-      exercise_days: 3,
-      notes:
-        "Good progress this week! Need to focus more on exercise and water intake.",
-    },
-  });
-
-  console.log("✅ Created sample weekly review");
-
   console.log("🎉 Database seeding completed!");
 }
 

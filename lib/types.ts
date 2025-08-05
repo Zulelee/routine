@@ -1,24 +1,8 @@
-import {
-  Task,
-  DailyLog,
-  WeeklyReview,
-  User,
-  Invoice,
-  Payment,
-  Client,
-} from "@prisma/client";
+import { Task, DailyLog, User, Invoice, Client } from "@prisma/client";
 
 export type TaskStatus = "todo" | "in_progress" | "done" | "blocked";
 export type Priority = "low" | "medium" | "high";
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue" | "cancelled";
-export type PaymentMethod =
-  | "bank_transfer"
-  | "credit_card"
-  | "cash"
-  | "check"
-  | "paypal"
-  | "stripe"
-  | "other";
 
 export type Currency = "USD" | "GBP" | "EUR" | "CAD" | "AUD" | "JPY";
 
@@ -30,17 +14,8 @@ export type DailyLogWithUser = DailyLog & {
   user: User;
 };
 
-export type WeeklyReviewWithUser = WeeklyReview & {
-  user: User;
-};
-
 export type InvoiceWithClient = Invoice & {
   client: Client;
-  payments: Payment[];
-};
-
-export type PaymentWithInvoice = Payment & {
-  invoice: Invoice;
 };
 
 export type ClientWithInvoices = Client & {
@@ -144,22 +119,5 @@ export interface UpdateInvoiceData {
   due_date?: Date | string;
   sent_date?: Date | string;
   paid_date?: Date | string;
-  notes?: string;
-}
-
-export interface CreatePaymentData {
-  invoice_id: string;
-  amount: number;
-  payment_date: Date | string;
-  payment_method: PaymentMethod;
-  reference?: string;
-  notes?: string;
-}
-
-export interface UpdatePaymentData {
-  amount?: number;
-  payment_date?: Date | string;
-  payment_method?: PaymentMethod;
-  reference?: string;
   notes?: string;
 }

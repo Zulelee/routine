@@ -12,14 +12,6 @@ export async function GET() {
             company: true,
           },
         },
-        payments: {
-          select: {
-            id: true,
-            amount: true,
-            payment_date: true,
-            payment_method: true,
-          },
-        },
       },
       orderBy: {
         created_at: "desc",
