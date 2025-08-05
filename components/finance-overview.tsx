@@ -20,10 +20,14 @@ import {
   Send,
   Clock,
 } from "lucide-react";
+import { Currency } from "@/lib/types";
+import { formatCurrency } from "@/lib/utils";
+import { YearCalendar } from "./year-calendar";
 
 interface Invoice {
   id: string;
   amount: number;
+  currency?: Currency;
   status: string;
   issue_date: string;
   due_date: string;
@@ -73,11 +77,8 @@ export function FinanceOverview() {
     fetchData();
   }, []);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+  const formatCurrencyDisplay = (amount: number, currency?: Currency) => {
+    return formatCurrency(amount, currency || "USD");
   };
 
   const getTotalRevenue = () => {
@@ -118,14 +119,35 @@ export function FinanceOverview() {
 
   const getTopClients = () => {
     return clients
-      .map((client) => ({
-        name: client.name,
-        company: client.company,
-        totalRevenue: client.invoices
-          .filter((invoice) => invoice.status === "paid")
-          .reduce((total, invoice) => total + invoice.amount, 0),
-        invoiceCount: client.invoices.length,
-      }))
+      .map((client) => {
+        const paidInvoices = client.invoices.filter(
+          (invoice) => invoice.status === "paid"
+        );
+        const totalRevenue = paidInvoices.reduce(
+          (total, invoice) => total + invoice.amount,
+          0
+        );
+
+        // Get the most common currency for this client's paid invoices
+        const currencyCounts = paidInvoices.reduce((counts, invoice) => {
+          const currency = invoice.currency || "USD";
+          counts[currency] = (counts[currency] || 0) + 1;
+          return counts;
+        }, {} as Record<Currency, number>);
+
+        const primaryCurrency =
+          (Object.entries(currencyCounts).sort(
+            (a, b) => b[1] - a[1]
+          )[0]?.[0] as Currency) || "USD";
+
+        return {
+          name: client.name,
+          company: client.company,
+          totalRevenue,
+          primaryCurrency,
+          invoiceCount: client.invoices.length,
+        };
+      })
       .filter((client) => client.totalRevenue > 0)
       .sort((a, b) => b.totalRevenue - a.totalRevenue)
       .slice(0, 3);
@@ -205,24 +227,6 @@ export function FinanceOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Revenue Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Revenue Overview</CardTitle>
-          <CardDescription>Financial performance and trends</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-64 flex items-center justify-center bg-muted/20 rounded-lg">
-            <div className="text-center">
-              <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Chart component will be added here
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Financial Metrics */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
@@ -307,7 +311,7 @@ export function FinanceOverview() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium">
-                    {formatCurrency(activity.amount)}
+                    {formatCurrencyDisplay(activity.amount, activity.currency)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {activity.timeAgo}
@@ -326,89 +330,49 @@ export function FinanceOverview() {
         </Card>
       </div>
 
-      {/* Invoice Workflow */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoice Workflow</CardTitle>
-          <CardDescription>Track your invoice lifecycle</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
-                <Clock className="h-5 w-5 text-gray-600" />
-              </div>
-              <div>
-                <p className="font-medium">Draft</p>
-                <p className="text-sm text-muted-foreground">
-                  Create and prepare invoice
-                </p>
-              </div>
-            </div>
-            <div className="text-sm text-muted-foreground">→</div>
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Send className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="font-medium">Sent</p>
-                <p className="text-sm text-muted-foreground">
-                  Invoice sent to client
-                </p>
-              </div>
-            </div>
-            <div className="text-sm text-muted-foreground">→</div>
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium">Paid</p>
-                <p className="text-sm text-muted-foreground">
-                  Payment received
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Top Clients */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Top Clients</CardTitle>
-          <CardDescription>Clients with highest revenue</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {getTopClients().map((client, index) => (
-              <div key={index} className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{client.name}</p>
+      {/* Top Clients and Year Calendar */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Top Clients</CardTitle>
+            <CardDescription>Clients with highest revenue</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {getTopClients().map((client, index) => (
+                <div key={index} className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{client.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {client.invoiceCount} invoices
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {formatCurrencyDisplay(
+                        client.totalRevenue,
+                        client.primaryCurrency
+                      )}
+                    </p>
+                    <Badge variant="secondary" className="text-xs">
+                      Active
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+              {getTopClients().length === 0 && (
+                <div className="text-center py-4">
                   <p className="text-sm text-muted-foreground">
-                    {client.invoiceCount} invoices
+                    No clients with revenue yet
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">
-                    {formatCurrency(client.totalRevenue)}
-                  </p>
-                  <Badge variant="secondary" className="text-xs">
-                    Active
-                  </Badge>
-                </div>
-              </div>
-            ))}
-            {getTopClients().length === 0 && (
-              <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground">
-                  No clients with revenue yet
-                </p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <YearCalendar invoices={invoices} />
+      </div>
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { ClientList } from "@/components/client-list";
 import { FinanceOverview } from "@/components/finance-overview";
 import { CreateInvoiceDialog } from "@/components/create-invoice-dialog";
 import { CreateClientDialog } from "@/components/create-client-dialog";
+import { Navigation } from "@/components/navigation";
 
 interface Invoice {
   id: string;
@@ -117,151 +118,159 @@ export default function FinancePage() {
   };
 
   return (
-    <main className="px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Finance
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Track your invoices, manage clients, and monitor your financial
-            overview
-          </p>
+    <>
+      <Navigation />
+      <main className="px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Finance
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Track your invoices, manage clients, and monitor your financial
+              overview
+            </p>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Revenue
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {loading ? "..." : formatCurrency(stats.totalRevenue)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "All time paid invoices"}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Outstanding
+                </CardTitle>
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {loading ? "..." : formatCurrency(stats.outstanding)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "Pending payments"}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  This Month
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {loading ? "..." : formatCurrency(stats.thisMonth)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "Current month revenue"}
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Active Clients
+                </CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {loading ? "..." : stats.activeClients}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {loading ? "Loading..." : "Total clients"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="space-y-6"
+          >
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="invoices" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Invoices
+              </TabsTrigger>
+              <TabsTrigger value="clients" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Clients
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              <FinanceOverview />
+            </TabsContent>
+
+            <TabsContent value="invoices" className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Invoices</h2>
+                  <p className="text-muted-foreground">
+                    Manage your invoices and track payments through status
+                    updates
+                  </p>
+                </div>
+                <Button onClick={() => setShowCreateInvoice(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Invoice
+                </Button>
+              </div>
+              <InvoiceList />
+            </TabsContent>
+
+            <TabsContent value="clients" className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold">Clients</h2>
+                  <p className="text-muted-foreground">
+                    Manage your client relationships
+                  </p>
+                </div>
+                <Button onClick={() => setShowCreateClient(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Client
+                </Button>
+              </div>
+              <ClientList />
+            </TabsContent>
+          </Tabs>
         </div>
 
-        {/* Quick Stats */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Revenue
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? "..." : formatCurrency(stats.totalRevenue)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {loading ? "Loading..." : "All time paid invoices"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
-              <AlertCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? "..." : formatCurrency(stats.outstanding)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {loading ? "Loading..." : "Pending payments"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? "..." : formatCurrency(stats.thisMonth)}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {loading ? "Loading..." : "Current month revenue"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Active Clients
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {loading ? "..." : stats.activeClients}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {loading ? "Loading..." : "Total clients"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Main Content */}
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="space-y-6"
-        >
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="invoices" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Invoices
-            </TabsTrigger>
-            <TabsTrigger value="clients" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Clients
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            <FinanceOverview />
-          </TabsContent>
-
-          <TabsContent value="invoices" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">Invoices</h2>
-                <p className="text-muted-foreground">
-                  Manage your invoices and track payments through status updates
-                </p>
-              </div>
-              <Button onClick={() => setShowCreateInvoice(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Invoice
-              </Button>
-            </div>
-            <InvoiceList />
-          </TabsContent>
-
-          <TabsContent value="clients" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold">Clients</h2>
-                <p className="text-muted-foreground">
-                  Manage your client relationships
-                </p>
-              </div>
-              <Button onClick={() => setShowCreateClient(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Client
-              </Button>
-            </div>
-            <ClientList />
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Dialogs */}
-      <CreateInvoiceDialog
-        open={showCreateInvoice}
-        onOpenChange={setShowCreateInvoice}
-      />
-      <CreateClientDialog
-        open={showCreateClient}
-        onOpenChange={setShowCreateClient}
-      />
-    </main>
+        {/* Dialogs */}
+        <CreateInvoiceDialog
+          open={showCreateInvoice}
+          onOpenChange={setShowCreateInvoice}
+        />
+        <CreateClientDialog
+          open={showCreateClient}
+          onOpenChange={setShowCreateClient}
+        />
+      </main>
+    </>
   );
 }

@@ -20,6 +20,8 @@ export type PaymentMethod =
   | "stripe"
   | "other";
 
+export type Currency = "USD" | "GBP" | "EUR" | "CAD" | "AUD" | "JPY";
+
 export type TaskWithUser = Task & {
   user: User;
 };
@@ -122,6 +124,7 @@ export interface CreateInvoiceData {
   title: string;
   description?: string;
   amount: number;
+  currency?: Currency;
   tax_rate?: number;
   issue_date: Date | string;
   due_date: Date | string;
@@ -134,6 +137,7 @@ export interface UpdateInvoiceData {
   title?: string;
   description?: string;
   amount?: number;
+  currency?: Currency;
   tax_rate?: number;
   status?: InvoiceStatus;
   issue_date?: Date | string;

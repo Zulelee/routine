@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
         title: body.title,
         description: body.description,
         amount: body.amount,
+        currency: body.currency || "USD",
         tax_rate: body.tax_rate || 0,
         issue_date: new Date(body.issue_date),
         due_date: new Date(body.due_date),

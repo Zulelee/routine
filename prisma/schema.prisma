@@ -108,6 +108,7 @@ model Invoice {
   title       String
   description String?
   amount      Float
+  currency    String        @default("USD")
   tax_rate    Float         @default(0)
   status      InvoiceStatus @default(draft)
   issue_date  DateTime

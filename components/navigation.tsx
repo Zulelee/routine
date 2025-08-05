@@ -13,11 +13,8 @@ import {
 
 const navigationItems = [
   { value: "/", label: "Today", icon: Home },
-  { value: "/calendar", label: "Calendar", icon: Calendar },
-  { value: "/weekly", label: "Weekly", icon: BarChart3 },
   { value: "/journal", label: "Journal", icon: BookOpen },
   { value: "/finance", label: "Finance", icon: DollarSign },
-  { value: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Navigation() {

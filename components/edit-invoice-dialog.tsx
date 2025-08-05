@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "lucide-react";
-import { UpdateInvoiceData, InvoiceStatus } from "@/lib/types";
+import { UpdateInvoiceData, InvoiceStatus, Currency } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
 interface Client {
@@ -37,6 +37,7 @@ interface Invoice {
   title: string;
   description?: string;
   amount: number;
+  currency?: Currency;
   tax_rate: number;
   status: InvoiceStatus;
   issue_date: string;
@@ -99,6 +100,7 @@ export function EditInvoiceDialog({
         title: invoice.title,
         description: invoice.description || "",
         amount: invoice.amount,
+        currency: invoice.currency || "USD",
         tax_rate: invoice.tax_rate,
         status: invoice.status,
         issue_date: invoice.issue_date.split("T")[0],
@@ -243,9 +245,9 @@ export function EditInvoiceDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount ($)</Label>
+              <Label htmlFor="amount">Amount</Label>
               <Input
                 id="amount"
                 type="number"
@@ -258,6 +260,28 @@ export function EditInvoiceDialog({
                 }
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select
+                value={formData.currency}
+                onValueChange={(value) =>
+                  handleInputChange("currency", value as Currency)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="GBP">GBP (£)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="CAD">CAD (C$)</SelectItem>
+                  <SelectItem value="AUD">AUD (A$)</SelectItem>
+                  <SelectItem value="JPY">JPY (¥)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

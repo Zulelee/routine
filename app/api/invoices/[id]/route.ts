@@ -54,6 +54,7 @@ export async function PATCH(
     if (body.description !== undefined)
       updateData.description = body.description;
     if (body.amount !== undefined) updateData.amount = body.amount;
+    if (body.currency !== undefined) updateData.currency = body.currency;
     if (body.tax_rate !== undefined) updateData.tax_rate = body.tax_rate;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.issue_date !== undefined)

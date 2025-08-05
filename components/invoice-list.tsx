@@ -33,9 +33,10 @@ import {
   Trash2,
   Edit,
 } from "lucide-react";
-import { InvoiceStatus } from "@/lib/types";
+import { InvoiceStatus, Currency } from "@/lib/types";
 import { EditInvoiceDialog } from "./edit-invoice-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
 
 interface Invoice {
   id: string;
@@ -44,6 +45,7 @@ interface Invoice {
   title: string;
   description?: string;
   amount: number;
+  currency?: Currency;
   tax_rate: number;
   status: InvoiceStatus;
   issue_date: string;
@@ -254,11 +256,8 @@ export function InvoiceList() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
+  const formatCurrencyDisplay = (amount: number, currency?: Currency) => {
+    return formatCurrency(amount, currency || "USD");
   };
 
   const isOverdue = (dueDate: string) => {
@@ -356,7 +355,10 @@ export function InvoiceList() {
                           </div>
                           <div className="flex items-center gap-1">
                             <DollarSign className="h-4 w-4" />
-                            {formatCurrency(invoice.amount)}
+                            {formatCurrencyDisplay(
+                              invoice.amount,
+                              invoice.currency
+                            )}
                           </div>
                         </div>
                       </div>
