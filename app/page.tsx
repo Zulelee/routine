@@ -40,6 +40,10 @@ import {
   Pin,
   Calendar as CalendarIcon,
   Play,
+  FolderOpen,
+  Users,
+  DollarSign,
+  BookOpen,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format, isToday, isYesterday, addDays, subDays } from "date-fns";
@@ -500,8 +504,8 @@ export default function TodayPage() {
       await updateDailyLog({ day_complete: true });
 
       // Get incomplete tasks for the current day
-      const incompleteTasks = tasks.filter(task => 
-        task.status === "todo" || task.status === "in_progress"
+      const incompleteTasks = tasks.filter(
+        (task) => task.status === "todo" || task.status === "in_progress"
       );
 
       if (incompleteTasks.length > 0) {
@@ -527,7 +531,8 @@ export default function TodayPage() {
         } else {
           toast({
             title: "Day ended",
-            description: "Your reflection has been saved, but there was an issue carrying forward tasks.",
+            description:
+              "Your reflection has been saved, but there was an issue carrying forward tasks.",
             variant: "destructive",
           });
         }
@@ -616,7 +621,9 @@ export default function TodayPage() {
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-0">Today</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-3 sm:mb-0">
+                Today
+              </h1>
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={goToPreviousDay}>
@@ -689,7 +696,7 @@ export default function TodayPage() {
                 <span className="hidden sm:inline">End Day</span>
                 <span className="sm:hidden">End</span>
               </Button>
-              <Button 
+              <Button
                 onClick={() => setIsTaskFormOpen(true)}
                 size="sm"
                 className="flex-1 sm:flex-none"
@@ -738,7 +745,9 @@ export default function TodayPage() {
                   <div className="text-xl sm:text-2xl font-bold text-green-600">
                     {completedTasks}
                   </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Completed</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">
+                    Completed
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl sm:text-2xl font-bold text-blue-600">
@@ -752,7 +761,9 @@ export default function TodayPage() {
                   <div className="text-xl sm:text-2xl font-bold text-purple-600">
                     {dailyLog.exercised ? "✓" : "✗"}
                   </div>
-                  <div className="text-xs sm:text-sm text-muted-foreground">Exercised</div>
+                  <div className="text-xs sm:text-sm text-muted-foreground">
+                    Exercised
+                  </div>
                 </div>
               </div>
               {totalTasks > 0 && (
@@ -769,6 +780,51 @@ export default function TodayPage() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card className="mb-6">
+            <CardContent className="p-4 sm:p-6">
+              <h3 className="font-medium mb-3">Quick Actions</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (window.location.href = "/projects")}
+                  className="flex flex-col items-center gap-1 h-auto py-3"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  <span className="text-xs">Projects</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (window.location.href = "/team")}
+                  className="flex flex-col items-center gap-1 h-auto py-3"
+                >
+                  <Users className="h-4 w-4" />
+                  <span className="text-xs">Team</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (window.location.href = "/finance")}
+                  className="flex flex-col items-center gap-1 h-auto py-3"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  <span className="text-xs">Finance</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => (window.location.href = "/journal")}
+                  className="flex flex-col items-center gap-1 h-auto py-3"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  <span className="text-xs">Journal</span>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -788,24 +844,40 @@ export default function TodayPage() {
               <Card>
                 <CardContent className="p-4 sm:p-8 text-center">
                   <Target className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-base sm:text-lg font-medium mb-2">No tasks yet</h3>
+                  <h3 className="text-base sm:text-lg font-medium mb-2">
+                    No tasks yet
+                  </h3>
                   <p className="text-sm sm:text-base text-muted-foreground mb-4">
                     {isSelectedDateToday
                       ? "Start your day by adding some tasks to accomplish."
                       : "No tasks for this day. Add some tasks or start a new day."}
                   </p>
                   <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                    <Button onClick={() => setIsTaskFormOpen(true)} size="sm" className="sm:text-base">
+                    <Button
+                      onClick={() => setIsTaskFormOpen(true)}
+                      size="sm"
+                      className="sm:text-base"
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Your First Task
                     </Button>
                     {!isSelectedDateToday && (
-                      <Button variant="outline" onClick={startNewDay} size="sm" className="sm:text-base">
+                      <Button
+                        variant="outline"
+                        onClick={startNewDay}
+                        size="sm"
+                        className="sm:text-base"
+                      >
                         <Play className="h-4 w-4 mr-2" />
                         Start New Day
                       </Button>
                     )}
-                    <Button variant="outline" onClick={initializeDatabase} size="sm" className="sm:text-base">
+                    <Button
+                      variant="outline"
+                      onClick={initializeDatabase}
+                      size="sm"
+                      className="sm:text-base"
+                    >
                       Load Sample Data
                     </Button>
                   </div>
@@ -825,7 +897,9 @@ export default function TodayPage() {
                         Pinned Tasks
                       </h3>
                       <SortableContext
-                        items={tasks.filter((task) => task.pinned).map((task) => task.id)}
+                        items={tasks
+                          .filter((task) => task.pinned)
+                          .map((task) => task.id)}
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="space-y-3">
@@ -855,7 +929,9 @@ export default function TodayPage() {
                         Other Tasks
                       </h3>
                       <SortableContext
-                        items={tasks.filter((task) => !task.pinned).map((task) => task.id)}
+                        items={tasks
+                          .filter((task) => !task.pinned)
+                          .map((task) => task.id)}
                         strategy={verticalListSortingStrategy}
                       >
                         <div className="space-y-3">

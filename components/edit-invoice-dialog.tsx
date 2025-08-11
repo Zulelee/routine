@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "lucide-react";
+import { Calendar, RefreshCw } from "lucide-react";
 import { UpdateInvoiceData, InvoiceStatus, Currency } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -66,7 +66,36 @@ export function EditInvoiceDialog({
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
+  const [generatingNumber, setGeneratingNumber] = useState(false);
   const { toast } = useToast();
+
+  // Function to generate new invoice number
+  const generateNewInvoiceNumber = async () => {
+    setGeneratingNumber(true);
+    try {
+      const response = await fetch("/api/invoices?nextNumber=true");
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev) => ({
+          ...prev,
+          invoice_number: data.nextInvoiceNumber,
+        }));
+        toast({
+          title: "Invoice number generated",
+          description: `New invoice number: ${data.nextInvoiceNumber}`,
+        });
+      }
+    } catch (error) {
+      console.error("Error generating invoice number:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate new invoice number",
+        variant: "destructive",
+      });
+    } finally {
+      setGeneratingNumber(false);
+    }
+  };
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -211,15 +240,30 @@ export function EditInvoiceDialog({
 
             <div className="space-y-2">
               <Label htmlFor="invoice_number">Invoice Number</Label>
-              <Input
-                id="invoice_number"
-                placeholder="INV-001"
-                value={formData.invoice_number || ""}
-                onChange={(e) =>
-                  handleInputChange("invoice_number", e.target.value)
-                }
-                required
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="invoice_number"
+                  placeholder="INV-001"
+                  value={formData.invoice_number || ""}
+                  onChange={(e) =>
+                    handleInputChange("invoice_number", e.target.value)
+                  }
+                  required
+                  disabled={generatingNumber}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={generateNewInvoiceNumber}
+                  disabled={generatingNumber}
+                >
+                  {generatingNumber ? (
+                    "Generating..."
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
 

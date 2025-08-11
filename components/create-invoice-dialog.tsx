@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "lucide-react";
+import { Calendar, RefreshCw } from "lucide-react";
 import { CreateInvoiceData, Currency } from "@/lib/types";
 
 interface Client {
@@ -54,6 +54,26 @@ export function CreateInvoiceDialog({
   const [loading, setLoading] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
+  const [generatingNumber, setGeneratingNumber] = useState(false);
+
+  // Function to generate next invoice number
+  const generateInvoiceNumber = async () => {
+    setGeneratingNumber(true);
+    try {
+      const response = await fetch("/api/invoices?nextNumber=true");
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev) => ({
+          ...prev,
+          invoice_number: data.nextInvoiceNumber,
+        }));
+      }
+    } catch (error) {
+      console.error("Error generating invoice number:", error);
+    } finally {
+      setGeneratingNumber(false);
+    }
+  };
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -76,6 +96,7 @@ export function CreateInvoiceDialog({
 
     if (open) {
       fetchClients();
+      generateInvoiceNumber(); // Auto-generate invoice number when dialog opens
     }
   }, [open]);
 
@@ -110,6 +131,7 @@ export function CreateInvoiceDialog({
           .toISOString()
           .split("T")[0],
         notes: "",
+        invoice_number: "", // Clear invoice number
       });
 
       onOpenChange(false);
@@ -185,15 +207,36 @@ export function CreateInvoiceDialog({
 
             <div className="space-y-2">
               <Label htmlFor="invoice_number">Invoice Number</Label>
-              <Input
-                id="invoice_number"
-                placeholder="INV-001"
-                value={formData.invoice_number || ""}
-                onChange={(e) =>
-                  handleInputChange("invoice_number", e.target.value)
-                }
-                required
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="invoice_number"
+                  placeholder="INV-001"
+                  value={formData.invoice_number || ""}
+                  onChange={(e) =>
+                    handleInputChange("invoice_number", e.target.value)
+                  }
+                  required
+                  disabled
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={generateInvoiceNumber}
+                  disabled={generatingNumber}
+                  title="Generate new invoice number"
+                >
+                  {generatingNumber ? (
+                    "Generating..."
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Invoice number is auto-generated. Click the refresh button to
+                generate a new one.
+              </p>
             </div>
           </div>
 

@@ -7,7 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { BookOpen, Calendar, Heart, MessageSquare } from "lucide-react";
+import {
+  BookOpen,
+  Calendar,
+  Heart,
+  MessageSquare,
+  CalendarDays,
+} from "lucide-react";
 import { format, subDays, eachDayOfInterval } from "date-fns";
 
 interface JournalEntry {
@@ -197,6 +203,95 @@ export default function JournalPage() {
                     ))}
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            {/* Calendar View */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays className="h-5 w-5" />
+                  Monthly Calendar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-1 text-center">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div
+                        key={day}
+                        className="p-2 text-sm font-medium text-muted-foreground"
+                      >
+                        {day}
+                      </div>
+                    )
+                  )}
+                  {Array.from({ length: 35 }, (_, i) => {
+                    const date = new Date();
+                    date.setDate(1);
+                    date.setDate(date.getDate() - date.getDay() + i);
+
+                    const entry = entries.find(
+                      (e) =>
+                        format(new Date(e.date), "yyyy-MM-dd") ===
+                        format(date, "yyyy-MM-dd")
+                    );
+
+                    const isToday =
+                      format(date, "yyyy-MM-dd") ===
+                      format(new Date(), "yyyy-MM-dd");
+                    const isCurrentMonth =
+                      date.getMonth() === new Date().getMonth();
+
+                    return (
+                      <div
+                        key={i}
+                        className={`
+                          p-2 text-sm border rounded cursor-pointer hover:bg-muted transition-colors
+                          ${isToday ? "bg-primary text-primary-foreground" : ""}
+                          ${
+                            !isCurrentMonth
+                              ? "text-muted-foreground opacity-50"
+                              : ""
+                          }
+                          ${entry ? "border-primary" : "border-transparent"}
+                        `}
+                        onClick={() => {
+                          if (entry) setSelectedEntry(entry);
+                        }}
+                      >
+                        <div className="text-xs">{date.getDate()}</div>
+                        {entry && (
+                          <div className="flex justify-center gap-1 mt-1">
+                            {entry.journal_entry && (
+                              <div className="w-1 h-1 bg-blue-500 rounded-full"></div>
+                            )}
+                            {entry.mood && (
+                              <div className="w-1 h-1 bg-green-500 rounded-full"></div>
+                            )}
+                            {(entry.water_glasses > 0 || entry.exercised) && (
+                              <div className="w-1 h-1 bg-purple-500 rounded-full"></div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-4 flex gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    Journal
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    Mood
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    Health
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

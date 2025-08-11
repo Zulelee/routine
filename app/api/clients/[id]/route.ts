@@ -17,6 +17,16 @@ export async function GET(
             status: true,
           },
         },
+        projects: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            start_date: true,
+            end_date: true,
+            budget: true,
+          },
+        },
       },
     });
 
@@ -59,6 +69,16 @@ export async function PATCH(
             id: true,
             amount: true,
             status: true,
+          },
+        },
+        projects: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            start_date: true,
+            end_date: true,
+            budget: true,
           },
         },
       },

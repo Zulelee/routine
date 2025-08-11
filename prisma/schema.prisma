@@ -23,6 +23,8 @@ model User {
   dailyLogs     DailyLog[]
   invoices      Invoice[]
   clients       Client[]
+  projects      Project[]
+  teamMembers   TeamMember[]
 
   @@map("users")
 }
@@ -79,8 +81,75 @@ model Client {
 
   user     User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   invoices Invoice[]
+  projects Project[]
 
   @@map("clients")
+}
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  user_id     String
+  name        String
+  email       String
+  role        String
+  hourly_rate Float
+  is_active   Boolean  @default(true)
+  notes       String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  user     User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  assignments ProjectMember[]
+
+  @@map("team_members")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  user_id     String
+  client_id   String
+  name        String
+  description String?
+  status      ProjectStatus @default(planning)
+  start_date  DateTime?
+  end_date    DateTime?
+  budget      Float?
+  hourly_rate Float?
+  payment_type PaymentType  @default(hourly_rate)
+  notes       String?
+  personal_project Boolean   @default(false)
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  members ProjectMember[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id         String   @id @default(cuid())
+  project_id String
+  team_member_id String?
+  name       String
+  role       String?
+  email      String?
+  hourly_rate Float?
+  payment_type PaymentType @default(hourly_rate)
+  payment_amount Float?
+  payment_status PaymentStatus @default(pending)
+  is_active  Boolean  @default(true)
+  joined_date DateTime @default(now())
+  left_date  DateTime?
+  notes      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  project     Project    @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  teamMember  TeamMember? @relation(fields: [team_member_id], references: [id], onDelete: SetNull)
+
+  @@map("project_members")
 }
 
 model Invoice {
@@ -130,5 +199,24 @@ enum InvoiceStatus {
   paid
   overdue
   cancelled
+}
+
+enum ProjectStatus {
+  planning
+  active
+  on_hold
+  completed
+  cancelled
+}
+
+enum PaymentType {
+  fixed_budget
+  hourly_rate
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  overdue
 }
 

@@ -2,11 +2,13 @@
 
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRouter, usePathname } from "next/navigation";
-import { Home, BookOpen, DollarSign } from "lucide-react";
+import { Home, BookOpen, DollarSign, FolderOpen, Users } from "lucide-react";
 
 const navigationItems = [
   { value: "/", label: "Today", icon: Home },
   { value: "/journal", label: "Journal", icon: BookOpen },
+  { value: "/projects", label: "Projects", icon: FolderOpen },
+  { value: "/team", label: "Team", icon: Users },
   { value: "/finance", label: "Finance", icon: DollarSign },
 ];
 
@@ -18,7 +20,7 @@ export function Navigation() {
     <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <Tabs value={pathname} onValueChange={router.push} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-12">
+          <TabsList className="grid w-full grid-cols-5 h-12">
             {navigationItems.map((item) => {
               const Icon = item.icon;
               return (
